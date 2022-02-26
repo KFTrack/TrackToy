@@ -13,6 +13,7 @@ namespace TrackToy {
   Tracker::Tracker(MatEnv::MatDBInfo const& matdbinfo,std::string const& trkfile,TRandom& tr):
     ncells_(0), cellDensity_(-1.0), density_(-1.0), smat_(0),
     vdrift_(-1.0), vprop_(-1.0), sigt_(-1.0), sigl_(-1.0), lrdoca_(-1.0), hiteff_(-1.0), hiscat_(10.0), tr_(tr)
+	, inwall_(nullptr), ecpwallups_(nullptr), ecpwalldws_(nullptr)
   {
     FileFinder filefinder;
     std::string fullfile = filefinder.fullFile(trkfile);
@@ -27,6 +28,7 @@ namespace TrackToy {
     double rcell(-1.0), lcell(-1.0), rwire(-1.0), wthick(-1.0);
     unsigned orient(0);
     std::string strawwall, strawgas, strawwire;
+    std::string inwallfile, ecupwallfile, ecdwwallfile;
     while (std::getline(tracker_stream, line)) {
       // skip comments and blank lines
       if (line.compare(0,1,comment) != 0 && line.size() > 0 ) {
@@ -61,6 +63,18 @@ namespace TrackToy {
         } else if(vdrift_ < 0.0){
           // hit properties
           iss >> vdrift_ >> vprop_ >> sigt_ >> sigl_ >> lrdoca_ >> hiteff_;
+        } else if(inwallfile=="") {
+        	iss >> inwallfile;
+        	std::cout << "Inner wall present, description in: " << inwallfile << std::endl;
+          inwall_ = new TrckrWall(matdbinfo, inwallfile, tr_);
+        } else if(ecupwallfile=="") {
+        	iss >> ecupwallfile;
+            std::cout << "Upstream EndCap wall present, description in: " << ecupwallfile << std::endl;
+            ecpwallups_ = new TrckrWall(matdbinfo, ecupwallfile, tr_);
+        } else if(ecdwwallfile=="") {
+          iss >> ecdwwallfile;
+            std::cout << "Downstream EndCap wall present, description in: " << ecdwwallfile << std::endl;
+            ecpwalldws_ = new TrckrWall(matdbinfo, ecdwwallfile, tr_);
         }
       }
     }
@@ -80,6 +94,15 @@ namespace TrackToy {
     std::cout << "Vdrift " << vdrift_ << " Vprop " << vprop_ << " transverse resolution " << sigt_
     << " longitudinal resolution " << sigl_ << " minimum LR doca " << lrdoca_
     << " hit efficiency " << hiteff_ << std::endl;
+    if ( inwall_ ) { inwall_->print(os); }
+    if ( ecpwallups_ ) { ecpwallups_->print(os); }
+    if ( ecpwalldws_ ) { ecpwalldws_->print(os); }
+  }
+
+  Tracker::~Tracker() {
+	  if ( inwall_ ) { delete inwall_; }
+	  if ( ecpwallups_ ) { delete ecpwallups_; }
+	  if ( ecpwalldws_ ) { delete ecpwalldws_; }
   }
 }
 

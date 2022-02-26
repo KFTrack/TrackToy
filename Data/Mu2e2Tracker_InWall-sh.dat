@@ -1,0 +1,6 @@
+
+#  Parameters describing the Mu2e Tracker Inner Wall
+# type 1 = cylinider, material
+1 CFiber
+# radius rhalf zpos zhalf
+364.85 0.13 0 1250.0

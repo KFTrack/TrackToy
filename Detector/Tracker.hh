@@ -4,6 +4,7 @@
 #ifndef TrackToy_Detector_Tracker_hh
 #define TrackToy_Detector_Tracker_hh
 #include "TrackToy/Detector/HollowCylinder.hh"
+#include "TrackToy/Detector/TrckrWall.hh"
 #include "TrackToy/General/TrajUtilities.hh"
 #include "KinKal/MatEnv/MatDBInfo.hh"
 #include "TrackToy/General/ELossDistributions.hh"
@@ -22,6 +23,7 @@ namespace TrackToy {
     public:
       enum CellOrientation{azimuthal=0,axial};
       Tracker(MatEnv::MatDBInfo const& matdbinfo,std::string const& tfile,TRandom& tr);
+      ~Tracker();
       auto const& cylinder() const { return cyl_; }
       unsigned nCells() const { return ncells_; }
       double density() const { return density_;} // gm/mm^3
@@ -36,6 +38,12 @@ namespace TrackToy {
       double zMin() const { return cyl_.zmin(); }
       double zMax() const { return cyl_.zmax(); }
       double zMid() const { return cyl_.zpos(); }
+      bool InWallIsPresent() const { return inwall_!=nullptr; }
+      bool EndCapWallUpStIsPresent() const { return ecpwallups_!=nullptr; }
+      bool EndCapWallDwStIsPresent() const { return ecpwalldws_!=nullptr; }
+      auto const& InWall() const { return *inwall_; }
+      auto const& EndCapWallUpSt() const { return *ecpwallups_; }
+      auto const& EndCapWallDwSt() const { return *ecpwalldws_; }
       void print(std::ostream& os) const;
       const KinKal::StrawMaterial* strawMaterial() const { return smat_; }
       // simulate hit and straw crossings along a particle trajectory.  This also updates the trajectory for BField and material effects
@@ -45,6 +53,12 @@ namespace TrackToy {
           std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
           std::vector<KinKal::TimeRange>& tinters,
           double tol) const;
+//      template<class KTRAJ> void inWallcrossing(KinKal::BFieldMap const& bfield,
+//          KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+//          std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+//          std::vector<KinKal::TimeRange>& tinters,
+//          double tol) const;
+
     private:
       // helper functions for simulating hits
       // create a line representing the wire for a time on a particle trajector.  This embeds the timing information
@@ -74,6 +88,9 @@ namespace TrackToy {
       double hiteff_; // hit efficiency
       double lowscat_, hiscat_, corefrac_; // factors for non-Gaussian scattering
       TRandom& tr_; // random number generator
+      TrckrWall *inwall_;
+      TrckrWall *ecpwallups_;
+      TrckrWall *ecpwalldws_;
   };
 
   template<class KTRAJ> void Tracker::simulateHits(KinKal::BFieldMap const& bfield,
@@ -267,6 +284,41 @@ namespace TrackToy {
 //    mctraj.append(newend);
     mctraj.append(newend,true); // allow truncation if needed
   }
+
+//  template<class KTRAJ> void Tracker::inWallcrossing(KinKal::BFieldMap const& bfield,
+//      KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+//      std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+//      std::vector<KinKal::TimeRange>& tinters, double tol) const {
+//    if (inwall_!=nullptr) {
+//      double tstart = mctraj.back().range().begin();
+//      double speed = mctraj.speed(tstart);
+//      double tstep = inwall_->cylinder().rhalf()/speed;
+//      // find intersections with tracker
+//      inwall_->cylinder().intersect(mctraj,tinters,tstart,tstep);
+//      //    std::cout << "ninters " << tinters.size() << std::endl;
+////      for(auto const& tinter : tinters) {
+////        double clen = tinter.range()*speed;
+////        //
+////        if(clen > minpath_){
+////          unsigned ncells = (unsigned)floor(clen*cellDensity_);
+////          double hstep = tinter.range()/(ncells+1);
+////          double htime = tinter.begin()+0.5*hstep;
+////          for(unsigned icell=0;icell<ncells;++icell){
+////            // extend the trajectory to this time
+////            extendTraj(bfield,mctraj,htime,tol);
+////            // create hits and xings for this time
+////            bool hashit=simulateHit(bfield,mctraj,htime,hits,xings);
+////            // update the trajector for the effect of this material
+////            if(hashit){
+////              updateTraj(bfield, mctraj,xings.back().get());
+////            }
+////            // update to the next
+////            htime += hstep;
+////          }
+////        }
+////      }
+//    }
+//  }
 
 }
 #endif

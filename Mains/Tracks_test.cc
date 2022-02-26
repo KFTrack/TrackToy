@@ -137,9 +137,14 @@ int main(int argc, char **argv) {
   TTree* trktree_(0);
   float targetde_, ipade_, trackerde_;
   float origine_, targete_, ipae_, trackere_;
+  float trkrECUPSde_, trkrECDWSde_, trkrIWentrde_, trkrIWotrde_, trkrWentrde_;
+  float trkrECUPSe_, trkrECDWSe_, trkrIWentre_, trkrIWotre_, trkrWentre_;
+  float bfrtrcke_;
+//  double bfrtrktime_;
   VEC3 originpos_, originmom_;
   float origintime_;
   int ntarget_, nipa_;
+  int ntrkrECUPS_, ntrkrECDWS_, ntrkrIWentr_, ntrkrIWotr_, ntrkrWentr_;
   int itrk_;
   double weight_; // event weight
   TrkInfo tinfo_;
@@ -360,6 +365,21 @@ int main(int argc, char **argv) {
     trktree_->Branch("ipae",&ipae_,"ipae/F");
     trktree_->Branch("nipa",&nipa_,"nipa/I");
     trktree_->Branch("ipade",&ipade_,"ipade/F");
+    trktree_->Branch("trkrECUPSe",&trkrECUPSe_,"trkrECUPSe/F");
+    trktree_->Branch("ntrkrECUPS",&ntrkrECUPS_,"ntrkrECUPS/I");
+    trktree_->Branch("trkrECUPSde",&trkrECUPSde_,"trkrECUPSde/F");
+    trktree_->Branch("trkrECDWSe",&trkrECDWSe_,"trkrECDWSe/F");
+    trktree_->Branch("ntrkrECDWS",&ntrkrECDWS_,"ntrkrECDWS/I");
+    trktree_->Branch("trkrECDWSde",&trkrECDWSde_,"trkrECDWSde/F");
+    trktree_->Branch("trkrIWentre",&trkrIWentre_,"trkrIWentre/F");
+    trktree_->Branch("ntrkrIWentr",&ntrkrIWentr_,"ntrkrIWentr/I");
+    trktree_->Branch("trkrIWentrde",&trkrIWentrde_,"trkrIWentrde/F");
+    trktree_->Branch("trkrIWotre",&trkrIWotre_,"trkrIWotre/F");
+    trktree_->Branch("ntrkrIWotr",&ntrkrIWotr_,"ntrkrIWotr/I");
+    trktree_->Branch("trkrIWotrde",&trkrIWotrde_,"trkrIWotrde/F");
+    trktree_->Branch("trkrWentre",&trkrWentre_,"trkrWentre/F");
+    trktree_->Branch("ntrkrWentr",&ntrkrWentr_,"ntrkrWentr/I");
+    trktree_->Branch("trkrWentrde",&trkrWentrde_,"trkrWentrde/F");
     trktree_->Branch("trackere",&trackere_,"trackere/F");
     trktree_->Branch("trackerde",&trackerde_,"trackerde/F");
     trktree_->Branch("mcentmom",&mcentmom_);
@@ -405,6 +425,9 @@ int main(int argc, char **argv) {
     targetde_ = ipade_ = trackerde_ = 0.0;
     targete_ = ipae_ = 0.0;
     ntarget_ = nipa_ = -1;
+    trkrECUPSde_ = 0.0;
+    trkrECUPSe_ = 0.0;
+    ntrkrECUPS_ = -1;
     kkentmom_ = kkmidmom_ = kkextmom_ = VEC3();
     kkentmomerr_ = kkmidmomerr_ = kkextmomerr_ = -1.0;
     kkentt0_ = kkmidt0_ = kkextt0_ = 0.0;
@@ -441,6 +464,7 @@ int main(int argc, char **argv) {
     // initialize piecetraj
     PKTRAJ mctraj(lhelix);
     TimeRanges targetinters, ipainters, trackerinters;
+    TimeRanges trckrECUPSinters, trckrECDWSinters, trckrIWinters;
     // extend through the target
     if(target.extendTrajectory(*bfield,mctraj,targetinters,mctol)){
       //      cout << "Extended to target " << targetinters.size() << endl;
@@ -455,21 +479,73 @@ int main(int argc, char **argv) {
         nipa_ = ipainters.size();
         ipae_ = mctraj.energy(mctraj.range().end());
         ipade_ = ipae_ - targete_;
+
+        bfrtrcke_ = ipae_;
+
         // extend  to the tracker entrance
-        extendZ(mctraj,*bfield, tracker.zMin(), mctol);
-        // now create hits and straw intersections
-        std::vector<std::shared_ptr<Hit<KTRAJ>>> hits;
-        std::vector<std::shared_ptr<ElementXing<KTRAJ>>> xings;
-        double speed = mctraj.speed(mctraj.range().end());
+        double trckZmin = tracker.zMin();
+        if(tracker.EndCapWallUpStIsPresent()){
+          trckZmin = tracker.EndCapWallUpSt().cylinder().zmin();
+         }
+        extendZ(mctraj,*bfield, trckZmin, mctol);
+//        bfrtrktime_ = mctraj.back().range().begin();
+
         // if the tracker field is different from the general field, change the trajector bnom
         if(trkfield != bfield){
-          double tent = ztime(mctraj,mctraj.back().range().begin(),tracker.zMin());
+          double tent = ztime(mctraj,mctraj.back().range().begin(),trckZmin);
           auto pstate = mctraj.back().state(tent);
           auto pos = pstate.position3();
           auto bend = trkfield->fieldVect(pos);
           KTRAJ endtraj(pstate,bend,TimeRange(tent,mctraj.range().end()));
           mctraj.append(endtraj);
         }
+
+        ntrkrECUPS_=ntrkrECDWS_=ntrkrIWentr_=ntrkrIWotr_=ntrkrWentr_=-1;
+        trkrECUPSe_=trkrECDWSe_=trkrIWentre_=trkrIWotre_=trkrWentre_=0.0;
+        trkrECUPSde_=trkrECDWSde_=trkrIWentrde_=trkrIWotrde_=trkrWentrde_=0.0;
+        if (tracker.EndCapWallUpStIsPresent() && tracker.EndCapWallUpSt().extendTrajectory(*bfield,mctraj,trckrECUPSinters,mctol)){
+          ntrkrECUPS_ = trckrECUPSinters.size();
+          trkrECUPSe_ = mctraj.energy(mctraj.range().end());
+          trkrECUPSde_ = trkrECUPSe_ - ipae_;
+          if (ntrkrECUPS_>0) {
+            trkrWentre_ = trkrECUPSe_;
+            trkrWentrde_ = trkrECUPSde_;
+            bfrtrcke_ = trkrECUPSe_;
+//            bfrtrktime_ = trckrECUPSinters.at(0).end();
+          }
+//          std::cout<<"EndCap Up intersection found, n. "<<trckrECUPSinters.size()<<std::endl;
+        }
+        if (tracker.InWallIsPresent() && ntrkrECUPS_<1 && tracker.InWall().extendTrajectory(*bfield,mctraj,trckrIWinters,mctol)) {
+          if (trckrIWinters.size()>0) {
+            ntrkrIWentr_=1;
+            auto iwlinter = trckrIWinters.at(0);
+            trkrIWentre_ = mctraj.energy(iwlinter.end());
+            trkrIWentrde_ = trkrIWentre_ - ipae_;
+            trkrWentre_ = trkrIWentre_;
+            trkrWentrde_ = trkrIWentrde_;
+            bfrtrcke_ = trkrIWentre_;
+//            bfrtrktime_ = iwlinter.end();
+//            auto posIn = mctraj.position3(iwlinter.begin());
+//            auto posEx = mctraj.position3(iwlinter.end());
+//            std::cout<<"Inner Wall intersection at:"<<std::endl;
+//            std::cout<<"entering pos "<<posIn<<" rad "<<posIn.Rho()<<" exiting "<<posEx<<" rad "<<posEx.Rho()<<std::endl;
+          }
+
+        }
+
+        // now create hits and straw intersections
+        std::vector<std::shared_ptr<Hit<KTRAJ>>> hits;
+        std::vector<std::shared_ptr<ElementXing<KTRAJ>>> xings;
+        double speed = mctraj.speed(mctraj.range().end());
+//        // if the tracker field is different from the general field, change the trajector bnom
+//        if(trkfield != bfield){
+//          double tent = ztime(mctraj,mctraj.back().range().begin(),tracker.zMin());
+//          auto pstate = mctraj.back().state(tent);
+//          auto pos = pstate.position3();
+//          auto bend = trkfield->fieldVect(pos);
+//          KTRAJ endtraj(pstate,bend,TimeRange(tent,mctraj.range().end()));
+//          mctraj.append(endtraj);
+//        }
         tracker.simulateHits(*trkfield,mctraj,hits,xings,trackerinters,mctol);
         tinfo_.ncells = xings.size();
         tinfo_.ntrkhits = hits.size();
@@ -481,7 +557,7 @@ int main(int argc, char **argv) {
 //          double ke = cestate.energy() - cestate.mass();
 //          trackerde_ = -100*trackerEStar.dEIonization(ke)*tracker.density()*trackerpath; // unit conversion
           trackere_ = mctraj.energy(mctraj.range().end());
-          trackerde_ = trackere_ - ipae_;
+          trackerde_ = trackere_ - bfrtrcke_;//ipae_;
           tarde->Fill(targetde_);
           ipade->Fill(ipade_);
           trkde->Fill(trackerde_);

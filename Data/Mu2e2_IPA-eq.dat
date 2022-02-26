@@ -1,0 +1,6 @@
+
+#  Parameters describing the Mu2e IPA
+# type 1 = cylinider, made of HDPE
+1 HDPE
+# radius rhalf zpos zhalf
+300.0 0.210 -2774.0 500.0

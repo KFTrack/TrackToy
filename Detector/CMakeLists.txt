@@ -5,6 +5,7 @@ add_library(Detector SHARED
     HollowCylinder.cc
     IPA.cc
     EStar.cc
+    TrckrWall.cc
     )
 
 # set top-level directory as include root

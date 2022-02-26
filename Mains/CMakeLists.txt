@@ -22,7 +22,7 @@ foreach( mainfile ${MAIN_FILES} )
 
     # add the project root as an include directory
     # link all test tests to KinKal, MatEnv, and ROOT libraries.
-    target_include_directories(Main_${testname} PRIVATE ${PROJECT_SOURCE_DIR}/..)
+    target_include_directories(Main_${testname} PRIVATE ${PROJECT_SOURCE_DIR}/.. ${KINKAL_INCLUDE_DIR})
     target_link_libraries( Main_${testname}  Spectra Detector General Test ${KINKAL_LIBRARIES} ${ROOT_LIBRARIES} )
 
     # ensure the test test executable filename is just its test name

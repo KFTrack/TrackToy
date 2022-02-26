@@ -63,3 +63,18 @@ IT-G10-FR4   1.800000  9.432800  18.941500  0  30.169500  -20  -30  20.0  1.0  s
 IT-Resin     1.160000  6.0  13.06  0  36.65000  74.08000  -30  20.0  1.0  solid
 IT-Hardner   1.010000  6.0  13.06  0  42.36000  85.62000  -30  20.0  1.0  solid
 IT-Epoxy     1.110000  0.  0.  +2  70.0e-2  IT-Resin  1  30.0e-2  IT-Hardner  1  -10  -20  -30  20.0  1.0  solid
+
+#All wire version og the Transvers Tracker
+ITT-wall1-1_mu2e2   0.106037  0. 0. +2 0.5712 IT-gas 1 0.4288 IT-Fwire 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall1-2_mu2e2   0.139027  0. 0. +2 0.4332 IT-gas 1 0.5668 IT-Fwire 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall1-2s_mu2e2   0.129295  0. 0. +2 0.3905 IT-gas 1 0.6095 IT-Fwire 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall1-3_mu2e2   0.115576  0. 0. +2 0.3182 IT-gas 1 0.6818 IT-Fwire 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall1-3s_mu2e2   0.109087  0. 0. +2 0.2776 IT-gas 1 0.7224 IT-Fwire 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall2-2_mu2e2    0.164428  0. 0. +4 0.3642 IT-gas 1 0.0929 IT-Fwire 1 0.5293 Mylar 1 0.0136 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall2-2s_mu2e2    0.154695  0. 0. +4 0.3242 IT-gas 1 0.0987 IT-Fwire 1 0.5626 Mylar 1 0.0145 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall2-3_mu2e2    0.140976  0. 0. +4 0.2584 IT-gas 1 0.1083 IT-Fwire 1 0.6174 Mylar 1 0.0159 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall2-3s_mu2e2    0.134488  0. 0. +4 0.2226 IT-gas 1 0.1136 IT-Fwire 1 0.6472 Mylar 1 0.0166 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall3-2_mu2e2    0.129523  0. 0. +4 0.1928 Helium 1 0.1179 IT-Fwire 1 0.673 Mylar 1 0.0173 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall3-2s_mu2e2    0.125464  0. 0. +4 0.1667 Helium 1 0.1217 IT-Fwire 1 0.6938 Mylar 1 0.0178 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall3-3_mu2e2    0.119742  0. 0. +4 0.1269 Helium 1 0.1275 IT-Fwire 1 0.7269 Mylar 1 0.0187 Aluminum 1 -10  -20  -30  20.0  1.0  gas
+ITT-wall3-3s_mu2e2    0.117036  0. 0. +4 0.1067 Helium 1 0.1305 IT-Fwire 1 0.7437 Mylar 1 0.0191 Aluminum 1 -10  -20  -30  20.0  1.0  gas

@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
   float targetde_, ipade_, trackerde_;
   float origine_, targete_, ipae_, trackere_;
   float trkrECUPSde_, trkrECDWSde_, trkrIWentrde_, trkrIWotrde_, trkrWentrde_;
-  float trkrECUPSe_, trkrECDWSe_, trkrIWentre_, trkrIWotre_, trkrWentre_;
+  float trkrECUPSe_, trkrECDWSe_, trkrIWentre_, /*trkrIWotre_,*/ trkrWentre_;
   float bfrtrcke_;
 //  double bfrtrktime_;
   VEC3 originpos_, originmom_;
@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
     trktree_->Branch("trkrIWentre",&trkrIWentre_,"trkrIWentre/F");
     trktree_->Branch("ntrkrIWentr",&ntrkrIWentr_,"ntrkrIWentr/I");
     trktree_->Branch("trkrIWentrde",&trkrIWentrde_,"trkrIWentrde/F");
-    trktree_->Branch("trkrIWotre",&trkrIWotre_,"trkrIWotre/F");
+//    trktree_->Branch("trkrIWotre",&trkrIWotre_,"trkrIWotre/F");
     trktree_->Branch("ntrkrIWotr",&ntrkrIWotr_,"ntrkrIWotr/I");
     trktree_->Branch("trkrIWotrde",&trkrIWotrde_,"trkrIWotrde/F");
     trktree_->Branch("trkrWentre",&trkrWentre_,"trkrWentre/F");
@@ -501,7 +501,7 @@ int main(int argc, char **argv) {
         }
 
         ntrkrECUPS_=ntrkrECDWS_=ntrkrIWentr_=ntrkrIWotr_=ntrkrWentr_=-1;
-        trkrECUPSe_=trkrECDWSe_=trkrIWentre_=trkrIWotre_=trkrWentre_=0.0;
+        trkrECUPSe_=trkrECDWSe_=trkrIWentre_=/*trkrIWotre_=*/trkrWentre_=0.0;
         trkrECUPSde_=trkrECDWSde_=trkrIWentrde_=trkrIWotrde_=trkrWentrde_=0.0;
         if (tracker.EndCapWallUpStIsPresent() && tracker.EndCapWallUpSt().extendTrajectory(*bfield,mctraj,trckrECUPSinters,mctol)){
           ntrkrECUPS_ = trckrECUPSinters.size();
@@ -546,17 +546,35 @@ int main(int argc, char **argv) {
 //          KTRAJ endtraj(pstate,bend,TimeRange(tent,mctraj.range().end()));
 //          mctraj.append(endtraj);
 //        }
-        tracker.simulateHits(*trkfield,mctraj,hits,xings,trackerinters,mctol);
+        tracker.simulateHits(*trkfield,mctraj,hits,xings,trackerinters,trckrIWinters,trckrECDWSinters,mctol);
         tinfo_.ncells = xings.size();
         tinfo_.ntrkhits = hits.size();
         tinfo_.narcs = trackerinters.size();
         if(hits.size() >= minnhits){
 // calcluate the estart energy loss
+
+          if (trckrIWinters.size()>0) {
+            int iwintotfst=0;
+            if (ntrkrECUPS_<1) { iwintotfst=1; }
+            ntrkrIWotr_ = trckrIWinters.size()-iwintotfst;
+            for (int iwint=iwintotfst; iwint<trckrIWinters.size(); ++iwint) {
+              auto iwlinter = trckrIWinters.at(iwint);
+              trkrIWotrde_ += mctraj.energy(iwlinter.end())-mctraj.energy(iwlinter.begin());
+            }
+          }
+          if (trckrECDWSinters.size()>0) {
+            auto ewlinter = trckrIWinters.at(0);
+            ntrkrECDWS_ = trckrECDWSinters.size();
+            trkrECDWSe_ = mctraj.energy(ewlinter.end());
+            trkrECDWSde_ = trkrECDWSe_ - mctraj.energy(ewlinter.begin());
+          }
+
           double trackerpath(0.0);
           for(auto const& inter : trackerinters) { trackerpath += speed*inter.range(); }
 //          double ke = cestate.energy() - cestate.mass();
 //          trackerde_ = -100*trackerEStar.dEIonization(ke)*tracker.density()*trackerpath; // unit conversion
-          trackere_ = mctraj.energy(mctraj.range().end());
+//          trackere_ = mctraj.energy(mctraj.range().end());
+          trackere_ = mctraj.energy(trackerinters.back().end());
           trackerde_ = trackere_ - bfrtrcke_;//ipae_;
           tarde->Fill(targetde_);
           ipade->Fill(ipade_);

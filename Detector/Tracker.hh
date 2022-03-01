@@ -13,11 +13,13 @@
 #include "KinKal/Detector/StrawXing.hh"
 #include "KinKal/Detector/StrawMaterial.hh"
 #include "KinKal/Examples/SimpleWireHit.hh"
+#include "TrackToy/KinKalAdd/GenElemXing.hh"
 #include "TRandom3.h"
 #include "Math/VectorUtil.h"
 #include <string>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 namespace TrackToy {
   class Tracker {
     public:
@@ -52,12 +54,8 @@ namespace TrackToy {
           std::vector<std::shared_ptr<KinKal::Hit<KTRAJ>>>& hits,
           std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
           std::vector<KinKal::TimeRange>& tinters,
+          std::vector<KinKal::TimeRange>& tIWinters, std::vector<KinKal::TimeRange>& tEDWinters,
           double tol) const;
-//      template<class KTRAJ> void inWallcrossing(KinKal::BFieldMap const& bfield,
-//          KinKal::ParticleTrajectory<KTRAJ>& mctraj,
-//          std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
-//          std::vector<KinKal::TimeRange>& tinters,
-//          double tol) const;
 
     private:
       // helper functions for simulating hits
@@ -72,6 +70,25 @@ namespace TrackToy {
       // udpdate the trajectory for material effects
       template <class KTRAJ> void updateTraj(KinKal::BFieldMap const& bfield,
           KinKal::ParticleTrajectory<KTRAJ>& mctraj, const KinKal::ElementXing<KTRAJ>* sxing) const;
+      template <class KTRAJ> void checkEndLoopPos(KinKal::BFieldMap const& bfield,
+          KinKal::ParticleTrajectory<KTRAJ>& mctraj, KinKal::TimeRange& tinter, double tol=1e-4) const;
+      template<class KTRAJ> bool inWallcrossing(KinKal::BFieldMap const& bfield,
+          KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+          std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+          KinKal::TimeRange& tinter,
+//          std::vector<KinKal::TimeRange>& tinters,
+          double tol=1e-4) const;
+      template<class KTRAJ> bool ecdwsWallcrossing(KinKal::BFieldMap const& bfield,
+          KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+          std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+          KinKal::TimeRange& tinter,
+//          std::vector<KinKal::TimeRange>& tinters,
+          double tol=1e-4) const;
+      template <class KTRAJ> bool simulateElemCross(KinKal::BFieldMap const& bfield,
+          KinKal::ParticleTrajectory<KTRAJ> const& mctraj,
+          KinKal::TimeRange& tinter,
+          std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+          const MatEnv::DetMaterial* mat) const;
     private:
       HollowCylinder cyl_; // geometric form of the tracker
       CellOrientation orientation_; // orientation of the cells
@@ -97,13 +114,19 @@ namespace TrackToy {
       KinKal::ParticleTrajectory<KTRAJ>& mctraj,
       std::vector<std::shared_ptr<KinKal::Hit<KTRAJ>>>& hits,
       std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
-      std::vector<KinKal::TimeRange>& tinters, double tol) const {
+      std::vector<KinKal::TimeRange>& tinters,
+      std::vector<KinKal::TimeRange>& tIWinters, std::vector<KinKal::TimeRange>& tEDWinters,
+      double tol) const {
     using KinKal::TimeRange;
     double tstart = mctraj.back().range().begin();
     double speed = mctraj.speed(tstart);
     double tstep = cellRadius()/speed;
     // find intersections with tracker
-    TimeRange trange = cylinder().intersect(mctraj,tstart,tstep);
+    KinKal::TimeRange trange = cylinder().intersect(mctraj,tstart,tstep);
+
+    std::cout << std::setprecision(5) << std::fixed;
+    double tEndLoop=0.0;
+    KinKal::VEC3 posEndLoop;
     while( (!trange.null()) && trange.end() < mctraj.range().end()) {
       double clen = trange.range()*speed;
       if(clen > minpath_){
@@ -124,7 +147,36 @@ namespace TrackToy {
           htime += hstep;
         }
       }
-      trange = cylinder().intersect(mctraj,trange.end(),tstep);
+//      trange = cylinder().intersect(mctraj,trange.end(),tstep);
+      tEndLoop=trange.end();
+      if (InWallIsPresent()) {
+        KinKal::TimeRange iwltinter(tEndLoop,tEndLoop);
+        checkEndLoopPos(bfield, mctraj, iwltinter);
+        tEndLoop=iwltinter.end();
+        posEndLoop = mctraj.position3(tEndLoop);
+//        std::cout<<"End loop in tracker at pos "<<posEndLoop<<" rad "<<posEndLoop.Rho()<<std::endl;
+        if(inWallcrossing(bfield, mctraj, xings, iwltinter)) {
+          tIWinters.push_back(iwltinter);
+          updateTraj(bfield, mctraj,xings.back().get());
+          tEndLoop=iwltinter.end()+0.1;
+          iwltinter=KinKal::TimeRange(tEndLoop,tEndLoop);
+          if(inWallcrossing(bfield, mctraj, xings, iwltinter)) {
+            tIWinters.push_back(iwltinter);
+            updateTraj(bfield, mctraj,xings.back().get());
+            tEndLoop=iwltinter.end();
+          }
+        }
+      }
+      trange = cylinder().intersect(mctraj,tEndLoop,tstep);
+    }
+    if ( EndCapWallDwStIsPresent() && posEndLoop.Rho()>cyl_.rmin() ) {
+//      std::cout<<"Chek EndCap"<<std::endl;
+      KinKal::TimeRange iwltinter(tEndLoop,tEndLoop);
+      if(ecdwsWallcrossing(bfield, mctraj, xings, iwltinter)) {
+        tEDWinters.push_back(iwltinter);
+        updateTraj(bfield, mctraj,xings.back().get());
+      }
+//      std::cout<<"Exiting loop in tracker at pos "<<posEndLoop<<" rad "<<posEndLoop.Rho()<<std::endl;
     }
   }
 
@@ -285,40 +337,113 @@ namespace TrackToy {
     mctraj.append(newend,true); // allow truncation if needed
   }
 
-//  template<class KTRAJ> void Tracker::inWallcrossing(KinKal::BFieldMap const& bfield,
-//      KinKal::ParticleTrajectory<KTRAJ>& mctraj,
-//      std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
-//      std::vector<KinKal::TimeRange>& tinters, double tol) const {
-//    if (inwall_!=nullptr) {
-//      double tstart = mctraj.back().range().begin();
-//      double speed = mctraj.speed(tstart);
-//      double tstep = inwall_->cylinder().rhalf()/speed;
-//      // find intersections with tracker
-//      inwall_->cylinder().intersect(mctraj,tinters,tstart,tstep);
-//      //    std::cout << "ninters " << tinters.size() << std::endl;
-////      for(auto const& tinter : tinters) {
-////        double clen = tinter.range()*speed;
-////        //
-////        if(clen > minpath_){
-////          unsigned ncells = (unsigned)floor(clen*cellDensity_);
-////          double hstep = tinter.range()/(ncells+1);
-////          double htime = tinter.begin()+0.5*hstep;
-////          for(unsigned icell=0;icell<ncells;++icell){
-////            // extend the trajectory to this time
-////            extendTraj(bfield,mctraj,htime,tol);
-////            // create hits and xings for this time
-////            bool hashit=simulateHit(bfield,mctraj,htime,hits,xings);
-////            // update the trajector for the effect of this material
-////            if(hashit){
-////              updateTraj(bfield, mctraj,xings.back().get());
-////            }
-////            // update to the next
-////            htime += hstep;
-////          }
-////        }
-////      }
-//    }
-//  }
+  template <class KTRAJ> void Tracker::checkEndLoopPos(KinKal::BFieldMap const& bfield,
+      KinKal::ParticleTrajectory<KTRAJ>& mctraj, KinKal::TimeRange& tinter, double tol) const {
+
+    double ttime = tinter.end();
+    auto pos=mctraj.position3(ttime);
+    auto veloc = mctraj.velocity(ttime);
+    double dt=1.0;
+    while ( dt>tol ) {
+      dt=0.00000;
+      if (pos.Z()>cyl_.zmax()) {
+        dt=(pos.Z()-cyl_.zmax())/veloc.Z();
+      } else if (pos.Z()<cyl_.zmin()) {
+        dt=(cyl_.zmin()-pos.Z())/veloc.Z();
+      } else if (pos.Rho()<cyl_.rmin()) {
+        dt=(cyl_.rmin()-pos.Rho())/veloc.Rho();
+      }
+      if ( dt>tol ) {
+//        std::cout<<"dt "<<dt<<std::endl;
+        ttime-=dt;
+        tinter = KinKal::TimeRange(ttime,ttime);
+        pos = mctraj.position3(ttime);
+        veloc = mctraj.velocity(ttime);
+//        std::cout<<"End loop in tracker updated at pos "<<pos<<" rad "<<pos.Rho()<<std::endl;
+      }
+    }
+  }
+
+  template<class KTRAJ> bool Tracker::inWallcrossing(KinKal::BFieldMap const& bfield,
+      KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+      std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+      KinKal::TimeRange& tinter,
+//      std::vector<KinKal::TimeRange>& tinters,
+      double tol
+      ) const {
+    bool retval=false;
+    if (inwall_!=nullptr) {
+      if (inwall_->intersect(bfield, mctraj, tinter, tol)) {
+//        auto posIn = mctraj.position3(tinter.begin());
+//        auto posEx = mctraj.position3(tinter.end());
+//        std::cout<<"Inner Wall intersection at time: from "<<tinter.begin()<<" to "<<tinter.end()<<std::endl;
+//        std::cout<<"at pos: entering "<<posIn<<" rad "<<posIn.Rho()<<" exiting "<<posEx<<" rad "<<posEx.Rho()<<std::endl;
+
+        simulateElemCross(bfield, mctraj, tinter, xings,inwall_->materialPtr());
+        retval=true;
+      }
+    }
+    return retval;
+  }
+
+  template<class KTRAJ> bool Tracker::ecdwsWallcrossing(KinKal::BFieldMap const& bfield,
+      KinKal::ParticleTrajectory<KTRAJ>& mctraj,
+      std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+      KinKal::TimeRange& tinter,
+//      std::vector<KinKal::TimeRange>& tinters,
+      double tol
+      ) const {
+    bool retval=false;
+    if (ecpwalldws_!=nullptr) {
+      if (ecpwalldws_->intersect(bfield, mctraj, tinter, tol)) {
+//        auto posIn = mctraj.position3(tinter.begin());
+//        auto posEx = mctraj.position3(tinter.end());
+//        std::cout<<"Endcap Downstream Wall intersection at time: from "<<tinter.begin()<<" to "<<tinter.end()<<std::endl;
+//        std::cout<<"at pos: entering "<<posIn<<" rad "<<posIn.Rho()<<" exiting "<<posEx<<" rad "<<posEx.Rho()<<std::endl;
+
+        simulateElemCross(bfield, mctraj, tinter, xings,ecpwalldws_->materialPtr());
+        retval=true;
+      }
+    }
+    return retval;
+  }
+
+
+  template <class KTRAJ> bool Tracker::simulateElemCross(KinKal::BFieldMap const& bfield, KinKal::ParticleTrajectory<KTRAJ> const& mctraj,
+      KinKal::TimeRange& tinter,
+      std::vector<std::shared_ptr<KinKal::ElementXing<KTRAJ>>>& xings,
+      const MatEnv::DetMaterial* mat) const {
+    using PTCA = KinKal::PiecewiseClosestApproach<KTRAJ,KinKal::Line>;
+    using GELEMXING = KinKal::GenElemXing<KTRAJ>;
+    using GELEMXINGPTR = std::shared_ptr<GELEMXING>;
+    using ROOT::Math::VectorUtil::PerpVector;
+    // create the line representing this hit's element.  The line embeds the timing information
+    auto posIn = mctraj.position3(tinter.begin());
+    auto posOut = mctraj.position3(tinter.end());
+    double path=(posOut-posIn).R();
+
+//    auto posMid = (posOut-posIn)/2;
+//    KinKal::Line const& eline = KinKal::Line(posMid,posMid,tinter.mid(),1.0); //speed set to 1 to avoid division for 0.0
+
+    auto vel = mctraj.velocity(tinter.begin());
+//    KinKal::Line const& eline = KinKal::Line(posIn,tinter.mid(),vel,path);
+    KinKal::VEC3 vprop(0,0,vel.Z());
+    double pathZ=(posOut-posIn).Z();
+    KinKal::Line const& eline = KinKal::Line(posIn,tinter.mid(),vprop,pathZ);
+
+
+    // find the TPOCA between the particle trajectory and the wire line
+//    KinKal::CAHint tphint(tinter.begin(),tinter.mid());
+    KinKal::CAHint tphint(tinter.mid(),tinter.mid());
+    static double tprec(1e-8); // TPOCA precision
+    PTCA tp(mctraj,eline,tphint,tprec);
+    // create the straw xing (regardless of inefficiency)
+    auto xing = std::make_shared<GELEMXING>(tp,mat,path);
+//    xing->print(std::cout,2);
+    xings.push_back(xing);
+    return true;
+  }
+
 
 }
 #endif

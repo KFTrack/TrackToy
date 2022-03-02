@@ -140,6 +140,8 @@ int main(int argc, char **argv) {
   float trkrECUPSde_, trkrECDWSde_, trkrIWentrde_, trkrIWotrde_, trkrWentrde_;
   float trkrECUPSe_, trkrECDWSe_, trkrIWentre_, /*trkrIWotre_,*/ trkrWentre_;
   float bfrtrcke_;
+  float ipapath_;
+  float trkrECUPSpath_, trkrECDWSpath_, trkrIWentrpath_, trkrIWotrdpath_, trkrWentrdpath_;
 //  double bfrtrktime_;
   VEC3 originpos_, originmom_;
   float origintime_;
@@ -350,6 +352,7 @@ int main(int argc, char **argv) {
   TH1F* tarde = new TH1F("tarde","Target dE;dE (MeV)",100,-3.0,0.0);
   TH1F* trkde = new TH1F("trkde","Tracker dE;dE (MeV)",100,-3.0,0.0);
   TH1F* trknc = new TH1F("trknc","Tracker N Cells;N Cells",100,0.001,100.0);
+  TH1F* ipaEqde = new TH1F("ipaEqde","IPA Equivalent dE",100,-3.0,0.0);
   if(ttree){
     trktree_ = new TTree("trks","trks");
     trktree_->Branch("itrk",&itrk_,"itrk/I");
@@ -380,8 +383,15 @@ int main(int argc, char **argv) {
     trktree_->Branch("trkrWentre",&trkrWentre_,"trkrWentre/F");
     trktree_->Branch("ntrkrWentr",&ntrkrWentr_,"ntrkrWentr/I");
     trktree_->Branch("trkrWentrde",&trkrWentrde_,"trkrWentrde/F");
+    trktree_->Branch("bfrtrcke",&bfrtrcke_,"bfrtrcke/F");
     trktree_->Branch("trackere",&trackere_,"trackere/F");
     trktree_->Branch("trackerde",&trackerde_,"trackerde/F");
+    trktree_->Branch("ipapath",&ipapath_,"ipapath/F");
+    trktree_->Branch("trkrECUPSpath",&trkrECUPSpath_,"trkrECUPSpath/F");
+    trktree_->Branch("trkrECDWSpath",&trkrECDWSpath_,"trkrECDWSpath/F");
+    trktree_->Branch("trkrIWentrpath",&trkrIWentrpath_,"trkrIWentrpath/F");
+    trktree_->Branch("trkrIWotrdpath",&trkrIWotrdpath_,"trkrIWotrdpath/F");
+    trktree_->Branch("trkrWentrdpath",&trkrWentrdpath_,"trkrWentrdpath/F");
     trktree_->Branch("mcentmom",&mcentmom_);
     trktree_->Branch("mcmidmom",&mcmidmom_);
     trktree_->Branch("mcextmom",&mcextmom_);
@@ -425,9 +435,7 @@ int main(int argc, char **argv) {
     targetde_ = ipade_ = trackerde_ = 0.0;
     targete_ = ipae_ = 0.0;
     ntarget_ = nipa_ = -1;
-    trkrECUPSde_ = 0.0;
-    trkrECUPSe_ = 0.0;
-    ntrkrECUPS_ = -1;
+    ipapath_ = 0.0;
     kkentmom_ = kkmidmom_ = kkextmom_ = VEC3();
     kkentmomerr_ = kkmidmomerr_ = kkextmomerr_ = -1.0;
     kkentt0_ = kkmidt0_ = kkextt0_ = 0.0;
@@ -479,11 +487,18 @@ int main(int argc, char **argv) {
         nipa_ = ipainters.size();
         ipae_ = mctraj.energy(mctraj.range().end());
         ipade_ = ipae_ - targete_;
+        for (auto ipainter : ipainters) {
+          auto posIn = mctraj.position3(ipainter.begin());
+          auto posOut = mctraj.position3(ipainter.end());
+          ipapath_ += (posOut-posIn).R();
+        }
 
         bfrtrcke_ = ipae_;
 
         // extend  to the tracker entrance
         double trckZmin = tracker.zMin();
+        double trckZin = tracker.zMin();
+        double trckZout = tracker.zMax();
         if(tracker.EndCapWallUpStIsPresent()){
           trckZmin = tracker.EndCapWallUpSt().cylinder().zmin();
          }
@@ -499,18 +514,25 @@ int main(int argc, char **argv) {
           KTRAJ endtraj(pstate,bend,TimeRange(tent,mctraj.range().end()));
           mctraj.append(endtraj);
         }
-
+//std::cout<<"Before ECUPS "<<mctraj.position3(mctraj.back().range().begin())<<std::endl;
         ntrkrECUPS_=ntrkrECDWS_=ntrkrIWentr_=ntrkrIWotr_=ntrkrWentr_=-1;
         trkrECUPSe_=trkrECDWSe_=trkrIWentre_=/*trkrIWotre_=*/trkrWentre_=0.0;
         trkrECUPSde_=trkrECDWSde_=trkrIWentrde_=trkrIWotrde_=trkrWentrde_=0.0;
+        trkrECUPSpath_=trkrECDWSpath_=trkrIWentrpath_=trkrIWotrdpath_=trkrWentrdpath_=0.0;
         if (tracker.EndCapWallUpStIsPresent() && tracker.EndCapWallUpSt().extendTrajectory(*bfield,mctraj,trckrECUPSinters,mctol)){
           ntrkrECUPS_ = trckrECUPSinters.size();
-          trkrECUPSe_ = mctraj.energy(mctraj.range().end());
+          trkrECUPSe_ = mctraj.energy(trckrECUPSinters.at(0).end());//mctraj.energy(mctraj.range().end());
           trkrECUPSde_ = trkrECUPSe_ - ipae_;
           if (ntrkrECUPS_>0) {
             trkrWentre_ = trkrECUPSe_;
             trkrWentrde_ = trkrECUPSde_;
             bfrtrcke_ = trkrECUPSe_;
+            auto posIn = mctraj.position3(trckrECUPSinters.at(0).begin());
+            auto posOut = mctraj.position3(trckrECUPSinters.at(0).end());
+            trckZin = posIn.Z();
+            trkrECUPSpath_ = (posOut-posIn).R();
+            trkrWentrdpath_ = trkrECUPSpath_;
+//            std::cout<<"ECUPS crossing at: "<<posIn<<" "<<posOut<<" in time "<<trckrECUPSinters.at(0).begin()<<" "<<trckrECUPSinters.at(0).end()<<std::endl;
 //            bfrtrktime_ = trckrECUPSinters.at(0).end();
           }
 //          std::cout<<"EndCap Up intersection found, n. "<<trckrECUPSinters.size()<<std::endl;
@@ -524,11 +546,14 @@ int main(int argc, char **argv) {
             trkrWentre_ = trkrIWentre_;
             trkrWentrde_ = trkrIWentrde_;
             bfrtrcke_ = trkrIWentre_;
+            auto posIn = mctraj.position3(iwlinter.begin());
+            auto posOut = mctraj.position3(iwlinter.end());
+            trckZin = posIn.Z();
+            trkrIWentrpath_ = (posOut-posIn).R();
+            trkrWentrdpath_ = trkrIWentrpath_;
 //            bfrtrktime_ = iwlinter.end();
-//            auto posIn = mctraj.position3(iwlinter.begin());
-//            auto posEx = mctraj.position3(iwlinter.end());
 //            std::cout<<"Inner Wall intersection at:"<<std::endl;
-//            std::cout<<"entering pos "<<posIn<<" rad "<<posIn.Rho()<<" exiting "<<posEx<<" rad "<<posEx.Rho()<<std::endl;
+//            std::cout<<"entering pos "<<posIn<<" rad "<<posIn.Rho()<<" exiting "<<posOut<<" rad "<<posOut.Rho()<<std::endl;
           }
 
         }
@@ -557,16 +582,26 @@ int main(int argc, char **argv) {
             int iwintotfst=0;
             if (ntrkrECUPS_<1) { iwintotfst=1; }
             ntrkrIWotr_ = trckrIWinters.size()-iwintotfst;
-            for (int iwint=iwintotfst; iwint<trckrIWinters.size(); ++iwint) {
+            for (unsigned int iwint=iwintotfst; iwint<trckrIWinters.size(); ++iwint) {
               auto iwlinter = trckrIWinters.at(iwint);
               trkrIWotrde_ += mctraj.energy(iwlinter.end())-mctraj.energy(iwlinter.begin());
-            }
+              auto posIn = mctraj.position3(iwlinter.begin());
+              auto posOut = mctraj.position3(iwlinter.end());
+              if ( iwint == (trckrIWinters.size()-1) ) {
+                trckZout = posIn.Z();
+              }
+              trkrIWotrdpath_ += (posOut-posIn).R();
+           }
           }
           if (trckrECDWSinters.size()>0) {
             auto ewlinter = trckrIWinters.at(0);
             ntrkrECDWS_ = trckrECDWSinters.size();
             trkrECDWSe_ = mctraj.energy(ewlinter.end());
             trkrECDWSde_ = trkrECDWSe_ - mctraj.energy(ewlinter.begin());
+            auto posIn = mctraj.position3(ewlinter.begin());
+            auto posOut = mctraj.position3(ewlinter.end());
+            trckZout = posIn.Z();
+            trkrECDWSpath_ += (posOut-posIn).R();
           }
 
           double trackerpath(0.0);
@@ -580,13 +615,14 @@ int main(int argc, char **argv) {
           ipade->Fill(ipade_);
           trkde->Fill(trackerde_);
           trknc->Fill(tinfo_.ncells);
+          ipaEqde->Fill(ipade_+trkrWentrde_);
           // add calo hit
           tinfo_.ncalohits = calo.simulateHits(*trkfield,mctraj,hits,mctol);
           // truncate the true trajectory
           mctraj.setRange(TimeRange(mctraj.range().begin(),mctraj.back().range().begin()+0.1));
           // get the true times at entrance and exit
-          double mctent = ztime(mctraj,trackerinters.front().begin(),tracker.zMin());
-          double mctext = ztime(mctraj,trackerinters.back().end(),tracker.zMax());
+          double mctent = ztime(mctraj,trackerinters.front().begin(),trckZin/*tracker.zMin()*/);
+          double mctext = ztime(mctraj,trackerinters.back().end(),trckZout/*tracker.zMax()*/);
           double mctmid = ztime(mctraj,0.5*(mctent+mctext),tracker.zMid());
           // record true momentum at tracker entranc, mid, and exit
           auto entstate = mctraj.stateEstimate(mctent);
@@ -649,9 +685,9 @@ int main(int argc, char **argv) {
           }
           if(fstat.usable()){
             auto const& kktraj = kktrk.fitTraj();
-            double kktent = ztime(kktraj,kktraj.range().begin(),tracker.zMin());
+            double kktent = ztime(kktraj,kktraj.range().begin(),trckZin/*tracker.zMin()*/);
             double kktmid = ztime(kktraj,kktraj.range().mid(),tracker.zMid());
-            double kktext = ztime(kktraj,kktraj.range().end(),tracker.zMax());
+            double kktext = ztime(kktraj,kktraj.range().end(),trckZout/*tracker.zMax()*/);
             // t0 comes from mid section
             auto const& kkmidtraj = kktraj.nearestPiece(kktmid);
             tinfo_.kkt0err = sqrt(kkmidtraj.paramVar(kkmidtraj.t0Index()));
@@ -665,9 +701,9 @@ int main(int argc, char **argv) {
             kkmidmomerr_ = sqrt(midstate.momentumVariance());
             kkextmomerr_ = sqrt(extstate.momentumVariance());
 // find time a crossing the entrance, mid, and exit z
-            kkentt0_ = ztime(kktraj,kktraj.range().begin(),tracker.zMin());
+            kkentt0_ = ztime(kktraj,kktraj.range().begin(),trckZin/*tracker.zMin()*/);
             kkmidt0_ = ztime(kktraj,kktraj.range().mid(),tracker.zMid());
-            kkextt0_ = ztime(kktraj,kktraj.range().end(),tracker.zMax());
+            kkextt0_ = ztime(kktraj,kktraj.range().end(),trckZout/*tracker.zMax()*/);
             kkentpos_ = entstate.position3();
             kkmidpos_ = midstate.position3();
             kkextpos_ = extstate.position3();

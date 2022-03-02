@@ -28,34 +28,80 @@ namespace TrackToy {
     TimeRange trange(ttest,ttest);
 
 //scan version to search for intersection
+//    auto pos = pktraj.position3(ttest);
+//    double tin=-1, tout=-1;
+//    double dz=0.0, dr = 0.0;
+//    int nstep=0;
+//    while(ttest < pktraj.range().end() && nstep<100){
+//      auto vel = pktraj.velocity(ttest);
+//      dz = fabs(tstep*vel.Z());
+//      dr = fabs(tstep*vel.Rho());
+//
+//      bool inZ = pos.Z()>zmin()-dz && pos.Z()<zmax()+dz;
+//      bool inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
+//      if ( inZ && inR ) {
+//        if ( tin<0 ) {
+//          tin=ttest;
+//          double tmpStep = 2.0*zhalf()/vel.Z();
+//          if (tstep>tmpStep) { tstep=tmpStep*0.1; }
+//        } else {
+//          tout=ttest;
+//        }
+//      } else if (tin>0 && tout>0 ) {
+//        trange = TimeRange(tin,tout);
+//        break;
+//      }
+//      ttest+= tstep;
+//      pos = pktraj.position3(ttest);
+//      ++nstep;
+//
+//    }
     auto pos = pktraj.position3(ttest);
-    double tin=-1, tout=-1;
+    double tin=-1;
     double dz=0.0, dr = 0.0;
-    int nstep=0;
-    while(ttest < pktraj.range().end() && nstep<100){
-      auto vel = pktraj.velocity(ttest);
-      dz = fabs(tstep*vel.Z());
-      dr = fabs(tstep*vel.Rho());
-
-      bool inZ = pos.Z()>zmin()-dz && pos.Z()<zmax()+dz;
-      bool inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
-      if ( inZ && inR ) {
-        if ( tin<0 ) {
-          tin=ttest;
-          double tmpStep = 2.0*zhalf()/vel.Z();
-          if (tstep>tmpStep) { tstep=tmpStep*0.1; }
-        } else {
-          tout=ttest;
-        }
-      } else if (tin>0 && tout>0 ) {
-        trange = TimeRange(tin,tout);
-        break;
+    bool inR=false;
+    auto vel = pktraj.velocity(ttest);
+    if (vel.Z()>0) {
+      dz = tstep*vel.Z();
+      while(pos.Z()<(zmin()-dz)) {
+        ttest+=tstep;
+        pos = pktraj.position3(ttest);
       }
-      ttest+= tstep;
-      pos = pktraj.position3(ttest);
-      ++nstep;
-
+      vel = pktraj.velocity(ttest);
+      tstep = 2.0*zhalf()/vel.Z()*0.05;
+      dz = tstep*vel.Z();
+      dr = tstep*vel.Rho();
+      while( pos.Z()<zmax() ) {
+        inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
+        if (tin<0 && pos.Z()>(zmin()-dz) && inR ) {
+          tin=ttest;
+        }
+        if (tin>0 && !inR ) { break; }
+        ttest+=tstep;
+        pos = pktraj.position3(ttest);
+      }
+    } else {
+      dz = -tstep*vel.Z();
+      while(pos.Z()>(zmax()+dz)) {
+        ttest+=tstep;
+        pos = pktraj.position3(ttest);
+      }
+      vel = pktraj.velocity(ttest);
+      tstep = -2.0*zhalf()/vel.Z()*0.05;
+      dz = tstep*vel.Z();
+      dr = tstep*vel.Rho();
+      while( pos.Z()>zmin() ) {
+        inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
+        if (tin<0 && pos.Z()<(zmax()+dz) && inR ) {
+          tin=ttest;
+        }
+        if (tin>0 && !inR ) { break; }
+        ttest+=tstep;
+        pos = pktraj.position3(ttest);
+      }
     }
+    if (tin>0) { trange = TimeRange(tin,ttest); }
+
 //end of scan version
 
 ////analytic version of the intersection evaluation, note, currently it assume only track that are traveling in the forward direction

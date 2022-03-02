@@ -90,6 +90,8 @@ namespace TrackToy {
 	        retval = updateEnergy(pktraj,trange.mid(),energy,dmom);
 //	        if(!retval)break;
 //	        trange = cyl_->intersect(pktraj,trange.end(),tstep);
+	      } else {
+	        retval=false;
 	      }
 	    }
 	    return retval;

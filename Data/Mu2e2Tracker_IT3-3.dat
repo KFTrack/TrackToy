@@ -1,0 +1,17 @@
+#
+#  Parameters describing the Mu2e-ii tracker
+# Volume information: rmin rmax zpos zhalf
+365.0 700.0 0.0 1450.0
+# Cell information: orientation (0=azimuthal, 1=axial), Ncells, cell radius, cell length, wall thickness, wire radius, minimum path
+0 62208 1.5 800.0 0.04 0.010 100
+# material information: wall, gas, and wire
+ITT-wall3-3_mu2e2 IT-gas straw-wire_mu2e2
+# Hit information: drift velocity (mm/ns), propagation velocity (mm/ns), drift resolution (ns), propagation resolution (ns), min LR doca (mm), hit efficiency
+0.065 200 6.0 0.1 0.5 0.95
+#0.04 200 6.0 0.1 0.5 0.95
+#Inner Wall
+Data/Mu2e2Tracker_InWall.dat
+#EndCap Upstream Wall
+Data/Mu2e2Tracker_ECUpWall.dat
+#EndCap Downstream Wall
+Data/Mu2e2Tracker_ECDwWall.dat

@@ -7,7 +7,8 @@
 # material information: wall, gas, and wire
 ITT-wall1-3s_mu2e2 IT-gas straw-wire_mu2e2
 # Hit information: drift velocity (mm/ns), propagation velocity (mm/ns), drift resolution (ns), propagation resolution (ns), min LR doca (mm), hit efficiency
-0.04 200 6.0 0.1 0.5 0.95
+0.065 200 6.0 0.1 0.5 0.95
+#0.04 200 6.0 0.1 0.5 0.95
 #Inner Wall
 Data/Mu2e2Tracker_InWall-sh.dat
 #EndCap Upstream Wall

@@ -60,47 +60,60 @@ namespace TrackToy {
     double tin=-1;
     double dz=0.0, dr = 0.0;
     bool inR=false;
+    int niter=0;
     auto vel = pktraj.velocity(ttest);
     if (vel.Z()>0) {
       dz = tstep*vel.Z();
-      while(pos.Z()<(zmin()-dz)) {
+      niter=0;
+      while( pos.Z()<(zmin()-dz) && ttest < pktraj.range().end() && niter<1000 ) {
         ttest+=tstep;
         pos = pktraj.position3(ttest);
+        ++niter;
       }
-      vel = pktraj.velocity(ttest);
-      tstep = 2.0*zhalf()/vel.Z()*0.05;
-      dz = tstep*vel.Z();
-      dr = tstep*vel.Rho();
-      while( pos.Z()<zmax() ) {
-        inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
-        if (tin<0 && pos.Z()>(zmin()-dz) && inR ) {
-          tin=ttest;
+      if (ttest < pktraj.range().end() && niter<1000) {
+        vel = pktraj.velocity(ttest);
+        tstep = 2.0*zhalf()/vel.Z()*0.05;
+        dz = tstep*vel.Z();
+        dr = tstep*vel.Rho();
+        niter=0;
+        while( pos.Z()<zmax() && ttest < pktraj.range().end() && niter<1000 ) {
+          inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
+          if (tin<0 && pos.Z()>(zmin()-dz) && inR ) {
+            tin=ttest;
+          }
+          if (tin>0 && !inR ) { break; }
+          ttest+=tstep;
+          pos = pktraj.position3(ttest);
+          ++niter;
         }
-        if (tin>0 && !inR ) { break; }
-        ttest+=tstep;
-        pos = pktraj.position3(ttest);
       }
     } else {
       dz = -tstep*vel.Z();
-      while(pos.Z()>(zmax()+dz)) {
+      niter=0;
+      while( pos.Z()>(zmax()+dz) && ttest < pktraj.range().end() && niter<1000 ) {
         ttest+=tstep;
         pos = pktraj.position3(ttest);
+        ++niter;
       }
-      vel = pktraj.velocity(ttest);
-      tstep = -2.0*zhalf()/vel.Z()*0.05;
-      dz = tstep*vel.Z();
-      dr = tstep*vel.Rho();
-      while( pos.Z()>zmin() ) {
-        inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
-        if (tin<0 && pos.Z()<(zmax()+dz) && inR ) {
-          tin=ttest;
+      if (ttest < pktraj.range().end() && niter<1000) {
+        vel = pktraj.velocity(ttest);
+        tstep = -2.0*zhalf()/vel.Z()*0.05;
+        dz = tstep*vel.Z();
+        dr = tstep*vel.Rho();
+        niter=0;
+        while( pos.Z()>zmin() && niter<1000 ) {
+          inR = pos.Rho()>rmin_-dr && pos.Rho()<rmax_+dr;
+          if (tin<0 && pos.Z()<(zmax()+dz) && inR ) {
+            tin=ttest;
+          }
+          if (tin>0 && !inR ) { break; }
+          ttest+=tstep;
+          pos = pktraj.position3(ttest);
+          ++niter;
         }
-        if (tin>0 && !inR ) { break; }
-        ttest+=tstep;
-        pos = pktraj.position3(ttest);
       }
     }
-    if (tin>0) { trange = TimeRange(tin,ttest); }
+    if ( tin>0 && ttest < pktraj.range().end() && niter<1000 ) { trange = TimeRange(tin,ttest); }
 
 //end of scan version
 

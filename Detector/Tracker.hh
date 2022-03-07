@@ -306,7 +306,7 @@ namespace TrackToy {
       double dm;
       double radFrac = sxing->radiationFraction()/10; // convert to cm
       // only include wall material for now; gas can be added later TODO
-//      DeltaRayLoss dLoss(&(sxing->matXings()[0].dmat_), mom,sxing->matXings()[0].plen_/10.0, endpiece.mass());
+      DeltaRayLoss dLoss(&(sxing->matXings()[0].dmat_), mom,sxing->matXings()[0].plen_/10.0, endpiece.mass());
       // generate a random effect given this variance and mean.  Note momEffect is scaled to momentum
       switch( mdir ) {
         case KinKal::MomBasis::perpdir_: case KinKal::MomBasis::phidir_ :
@@ -318,7 +318,7 @@ namespace TrackToy {
           // calculate a smeared energy loss using a Moyal distribution
           ionloss = edist.sample(tr_.Uniform(0.0,1.0));
           bremloss = bLoss.sampleSSPGamma(mom,radFrac);
-          dloss = 0.0;//dLoss.sampleDRL();
+          dloss = dLoss.sampleDRL();
 //          std::cout << "Tracker Ionization eloss = " << ionloss << " Delta eloss " << dloss << " rad eloss "  << bremloss << std::endl;
           dm = std::max(-(ionloss+bremloss+dloss),-mom); // must be positive
           break;

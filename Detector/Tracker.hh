@@ -306,7 +306,7 @@ namespace TrackToy {
       double dm;
       double radFrac = sxing->radiationFraction()/10; // convert to cm
       // only include wall material for now; gas can be added later TODO
-      DeltaRayLoss dLoss(&(sxing->matXings()[0].dmat_), mom,sxing->matXings()[0].plen_/10.0, endpiece.mass());
+//      DeltaRayLoss dLoss(&(sxing->matXings()[0].dmat_), mom,sxing->matXings()[0].plen_/10.0, endpiece.mass());
       // generate a random effect given this variance and mean.  Note momEffect is scaled to momentum
       switch( mdir ) {
         case KinKal::MomBasis::perpdir_: case KinKal::MomBasis::phidir_ :
@@ -318,7 +318,7 @@ namespace TrackToy {
           // calculate a smeared energy loss using a Moyal distribution
           ionloss = edist.sample(tr_.Uniform(0.0,1.0));
           bremloss = bLoss.sampleSSPGamma(mom,radFrac);
-          dloss = dLoss.sampleDRL();
+          dloss = 0.0;//dLoss.sampleDRL();
 //          std::cout << "Tracker Ionization eloss = " << ionloss << " Delta eloss " << dloss << " rad eloss "  << bremloss << std::endl;
           dm = std::max(-(ionloss+bremloss+dloss),-mom); // must be positive
           break;
@@ -347,19 +347,25 @@ namespace TrackToy {
     while ( dt>tol ) {
       dt=0.00000;
       if (pos.Z()>cyl_.zmax()) {
-        dt=(pos.Z()-cyl_.zmax())/veloc.Z();
+        dt=(pos.Z()-cyl_.zmax())/fabs(veloc.Z());
       } else if (pos.Z()<cyl_.zmin()) {
-        dt=(cyl_.zmin()-pos.Z())/veloc.Z();
+        dt=(cyl_.zmin()-pos.Z())/fabs(veloc.Z());
       } else if (pos.Rho()<cyl_.rmin()) {
         dt=(cyl_.rmin()-pos.Rho())/veloc.Rho();
+      } else if (pos.Rho()>cyl_.rmin()) {
+        dt=0.0;
       }
       if ( dt>tol ) {
 //        std::cout<<"dt "<<dt<<std::endl;
         ttime-=dt;
-        tinter = KinKal::TimeRange(ttime,ttime);
-        pos = mctraj.position3(ttime);
-        veloc = mctraj.velocity(ttime);
-//        std::cout<<"End loop in tracker updated at pos "<<pos<<" rad "<<pos.Rho()<<std::endl;
+        if (ttime>0.0 && ttime<mctraj.range().end()) {
+          tinter = KinKal::TimeRange(ttime,ttime);
+          pos = mctraj.position3(ttime);
+          veloc = mctraj.velocity(ttime);
+          //        std::cout<<"End loop in tracker updated at pos "<<pos<<" rad "<<pos.Rho()<<std::endl;
+        } else {
+          break;
+        }
       }
     }
   }
